@@ -1,7 +1,8 @@
 ;#NoTrayIcon
 #SingleInstance force
 
-#Include %A_LineFile%\..\..\..\_TC-commands\_Ahk-Lib\Path\Path.ahk
+#Include %A_LineFile%\..\..\_Ahk-Lib\File\Path\Path.ahk
+#Include %A_LineFile%\..\..\_Ahk-Lib\Clip\Clip.ahk
 
 /** Browse File In Total Commander
 	PATH IS DEFINED IN PARAMETER, CLIPBOARD OR VIA SELECTED TEXT
@@ -24,7 +25,7 @@ TC_goToFile($file_path:=""){
 		 /* try get selected text
 		 */
 		$path_clipboard	:= Path(Clipboard).getPath()
-		$path_selected	:= Path(Text_Get()).getPath()
+		$path_selected	:= Path(Clip_Get()).getPath()
 
 		/* try get path from path_clipboard, if path is not selected
 		*/
@@ -39,7 +40,7 @@ TC_goToFile($file_path:=""){
 			/* GET PaTH OF KOMODO FILE
 			*/
 			IfWinActive, ahk_exe komodo.exe
-				$file_path := Komodo().KomodoFile.getFile()
+				$file_path := getKomodoFileFromTitle()
 			else{
 				/* TRY GET FILE PATH FROM OTEHRS PROGRAMS TITLES
 				 */
@@ -49,8 +50,6 @@ TC_goToFile($file_path:=""){
 				if FileExist($path_title)
 					$file_path := $path_title
 			}
-			;dump($file_path, "$file_path", 0)
-			;sleep, 10000
 		}
 	}
 
@@ -61,8 +60,25 @@ TC_goToFile($file_path:=""){
 	if FileExist($file_path)
 		Run, % $commander_path " /S /O """ $file_path """"
 
-
 }
+
+
+getKomodoFileFromTitle()
+{
+	WinGetTitle, $win_title, ahk_exe komodo.exe
+
+	RegExMatch( $win_title, "(\S+)\**\s\(([^,)]+)", $file_path_match )
+	RegExMatch( $win_title, "Project\s(\S+)", $project_match )
+
+	if ( $file_path_match ){
+		$filePath	 = %$file_path_match2%\%$file_path_match1% 
+		return $filePath
+	}
+				
+	if ( $project_match )
+		return $project_match1
+}
+	
 
 
 $file_path = %1%

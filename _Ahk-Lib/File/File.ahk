@@ -2,6 +2,7 @@
 	Class File
 */
 #Include %A_LineFile%\..\Path\Path.ahk 
+#Include %A_LineFile%\..\..\RegEx\RegExMatchAll.ahk 
 
 Class File extends Path
 {
@@ -158,7 +159,7 @@ Class File extends Path
 		}else
 			this.target.createParentDir()
 
-		$file_or_folder	:= this.isDir() ? "/d" : ""
+		$file_or_folder	:= this.isDir() ? "/d" : "/h"
 		$mklink	:= "mklink " $file_or_folder " """ this.target.getPath() """ """ this.path """"
 		RunWait %comspec% /c %$mklink%,,Hide
 		return this
