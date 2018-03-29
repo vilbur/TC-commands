@@ -1,7 +1,7 @@
 ;#NoTrayIcon
 #SingleInstance force
 
-#Include %A_LineFile%\..\..\..\_TC-ahk-lib\Path\Path.ahk
+#Include %A_LineFile%\..\..\..\_TC-commands\_Ahk-Lib\Path\Path.ahk
 
 /** Browse File In Total Commander
 	PATH IS DEFINED IN PARAMETER, CLIPBOARD OR VIA SELECTED TEXT

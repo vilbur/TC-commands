@@ -1,8 +1,8 @@
 #NoTrayIcon
 #SingleInstance force
 
-#Include %A_LineFile%\..\..\..\_TC-ahk-lib\TotalCommander\TcSelection\TcSelection.ahk
-#Include %A_LineFile%\..\..\..\_TC-ahk-lib\TotalCommander\TcCommand\TcCommand.ahk
+#Include %A_LineFile%\..\..\..\_TC-commands\_Ahk-Lib\TotalCommander\TcSelection\TcSelection.ahk
+#Include %A_LineFile%\..\..\..\_TC-commands\_Ahk-Lib\TotalCommander\TcCommand\TcCommand.ahk
 
 /** Add files selected or file under cursor to Total commander commands
   *

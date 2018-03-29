@@ -1,9 +1,9 @@
 ;#NoTrayIcon
 #SingleInstance force
 
-#Include %A_LineFile%\..\..\..\_TC-ahk-lib\TotalCommander\TcSelection\TcSelection.ahk
-#Include %A_LineFile%\..\..\..\_TC-ahk-lib\TotalCommander\TcPane\TcPane.ahk
-#Include %A_LineFile%\..\..\..\_TC-ahk-lib\File\File.ahk
+#Include %A_LineFile%\..\..\..\_TC-commands\_Ahk-Lib\TotalCommander\TcSelection\TcSelection.ahk
+#Include %A_LineFile%\..\..\..\_TC-commands\_Ahk-Lib\TotalCommander\TcPane\TcPane.ahk
+#Include %A_LineFile%\..\..\..\_TC-commands\_Ahk-Lib\File\File.ahk
 
 $TcPane	:= new TcPane()
 $selection	:= new TcSelection().getSelectionOrFocused()
