@@ -10,7 +10,8 @@ Class CreateClassFile
 	_path_dir	:= ""
 	_path_file	:= ""	
 	_test_file	:= "" 		
-
+	_includes	:= false ; create includes file
+	
 	__New()
 	{		
 		this._askClassName()
@@ -22,10 +23,11 @@ Class CreateClassFile
 		this._createFolder()
 		this._createTestFile()
 		
+		this._setToIncludes()
+		
 		this._appendClassFile()
 		this._appendTestFile()
 		
-		this._setToIncludes()										
 	}
 	
 	/**
@@ -101,12 +103,14 @@ Class CreateClassFile
 	 */
 	_getClassDefinition( $class_name )
 	{
-		$class_def :=	["/** " $class_name
+		$includes = \..\includes.ahk
+		
+		$class_def :=	[(this._includes ? "#Include %A_LineFile%\..\includes.ahk`n`n": "") "/** " $class_name
 			," *"
 			," */"
 			,"Class " $class_name
 			,"{"
-			,"	"			
+			,"	"
 			,"}"]
 		
 		return this._joinObject($class_def)	
@@ -126,7 +130,11 @@ Class CreateClassFile
 			,""
 			,"/** " $class_name "Test","*/"
 			,$class_name "Test()" ,"{" ,"" ,"}"
-			,"","/** RUN TESTS","*/"		
+			,""			
+			,"/*---------------------------------------"
+			,"	RUN TESTS"
+			, "-----------------------------------------"
+			,"*/"		
 			,$class_name "Test()"
 			,""]
 		
@@ -151,30 +159,39 @@ Class CreateClassFile
 	{
 		MsgBox, 4, INSERT TO INCLUDES, Insert to include files ?
 		IfMsgBox, No
-			return
+			return this._createIncludeFile()
 		
 		$includes_path := this._findIncludeFile()
 		
 		if( $includes_path ){
 			MsgBox, 4, INSERT TO INCLUDES, % "Include to ?`n`n" $includes_path
 			IfMsgBox, No
-				return 
+				return
 		}else
 			FileSelectFile, $includes_path , , % this._path_dir, Select Include File, Ahk files (*.ahk)
 
 
 		if( $includes_path )
 		{
-			;$relative_path := this.PathRelativePathTo( this._path_dir, $includes_path )
-			$relative_path := this.PathRelativePathTo(  $includes_path, this._path_file )			
+			$relative_path := this.PathRelativePathTo( $includes_path, this._path_file )			
 
-			;$relative_path := RegExReplace( $relative_path, "^", "\" ) 
-			;$relative_path = \..\%$relative_path%
 			$relative_path = \%$relative_path%
 			
 			FileAppend, % "`n#Include %A_LineFile%" $relative_path, %$includes_path%
 		}
 	}
+	/**
+	 */
+	_createIncludeFile()
+	{
+		MsgBox, 4, CREATE INCLUDE FILE, % "Create includes.ahk ?"
+			IfMsgBox, No
+				return
+		
+		this._includes := true
+		
+		FileAppend, % "/**`n *`n */", % this._path_dir "\includes.ahk"
+	} 
 	/**
 	 */
 	_findIncludeFile()

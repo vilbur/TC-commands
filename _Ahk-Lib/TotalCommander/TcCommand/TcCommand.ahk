@@ -2,135 +2,152 @@
 */
 Class TCcommand
 {
-	_commander_path	:= ""	
-	_usercmd_ini	:= "" ; save commands
-	_name	:= ""
-	_cmd	:= ""	
-	_param	:= ""
-	_menu	:= ""	
-	_tooltip	:= ""	
-	_button	:= "%systemroot%\system32\shell32.dll,43"			
+	_process_name	:= ""
+	_hwnd	:= ""
+	
+	_command_line	:= ""
+	_codes_ini	:= "" ; save 	
+	
+	_cmd	:= ""	; command name
+	_CM	:= 0 	; command code
+	_EM	:= false	; is user command
 	
 	/** _setTabsPath
 	 */
 	__New()
 	{
-		$commander_path	= %Commander_Path%	
-		$_usercmd_ini	= %Commander_Path%\usercmd.ini		
-		this._commander_path	:= $commander_path		
-		this._usercmd_ini	:= $_usercmd_ini		
-	}
-	/**
-	 */
-	name( $name )
-	{
-		this._name 	:= "em_" $name
-		this._shortcut	:= new TcShortcut().name(this._name)
-		return this 		
-	}
-	/**
-	 */
-	cmd( $cmd )
-	{
-		this._cmd := """" this._replaceCommanderPathEnvVariable($cmd) """"
+		this._setProcessName()
+		this._setHwnd()
+		this._setCommandLineControl()		
 		
-		return this 		
-	}
-	/**
-	 */
-	param( $params* )
-	{
-		For $i, $param in $params
-			this._param .= this._escapeParameter($param) " "			
-			;this._param .= $param " "
-	
-		return this
-	}
-	/**
-	 */
-	menu( $menu_title )
-	{
-		this._menu := $menu_title
-		return this 		
-	}	
-	/**
-	 */
-	tooltip( $tooltip )
-	{
-		this._tooltip := $tooltip
-		return this 		
-	}
-	/**
-	 */
-	icon( $icon )
-	{
-		this._button :=this._replaceCommanderPathEnvVariable($icon)
-		return this 		
-	}
-	/**
-	 */
-	create()
-	{
-		this._setDefaultTooltip()
+		$_usercmd_ini	= %Commander_Path%\usercmd.ini
+		this._usercmd_ini	:= $_usercmd_ini
 		
-		this._writeToIni( "menu" )		
-		this._writeToIni( "cmd" )
-		this._writeToIni( "param" )
-		this._writeToIni( "tooltip" )		
-		this._writeToIni( "button" )
+		$_codes_ini	= %Commander_Path%\TOTALCMD.INC				
+		this._codes_ini	:= $_codes_ini
+	}
+	/**
+	 */
+	call( $cmd, $wait:=0 )
+	{
+		this._cmd := $cmd		
 		
-		return this
-	}
-	/**
-	 */
-	delete( )
-	{
-		if( this._name )
-			IniDelete, % this._usercmd_ini, % this._name
-		return this
-	}
-	/**
-	 */
-	shortcut( $keys* )
-	{
-		if( $keys )
-			return % this._shortcut.keys($keys)
-		
-		return this._shortcut
-	}
-	
-	/** escape and quote %T & %P parameter
-	 */
-	_escapeParameter( $param )
-	{
-		if( RegExMatch( $param, "i)^%[TP]$" )  )
-			return % """" $param "\""" ;;;;;; "
-		
-		return %$param%
-	} 
-	/**
-	 */
-	_setDefaultTooltip()
-	{
-		if( ! this._tooltip )
-			this._tooltip := this._menu
-	} 
-	/**
-	 */
-	_writeToIni( $key )
-	{
-		;Dump($key, "_writeToIni", 1)
-		if( this["_" $key ] != "" )
-			IniWrite, % this["_" $key ],	% this._usercmd_ini, % this._name, %$key%		
-	} 
-	/** Replace path to %COMMANDER_PATH% back
-			E.G.: "C:\TotalCommander" >>> "%COMMANDER_PATH%"
-	 */
-	_replaceCommanderPathEnvVariable( $path )
-	{
-		$commander_path_rx := RegExReplace( this._commander_path, "i)[\\\/]+", "\\" )
-		return % RegExReplace( $path, "i)" $commander_path_rx, "%COMMANDER_PATH%" ) 
-	}
-	
-}
+		this._findDefaultCommand()
 
+		if( ! this._CM )
+			this._findUserCommand()
+		
+		this._wait($wait)
+		
+		if( this._CM )
+			this._callDefaultCommand()
+			
+		else if( this._EM )
+			this._calllUserCommand()
+			
+		return this
+	}
+
+	/**
+	 */
+	_findDefaultCommand()
+	{
+		if( InStr( this._cmd, "em_" ) )
+			return 
+		
+		$cmd_search := InStr( this._cmd, "cm_" )? this._cmd : "cm_" this._cmd
+		
+		loop Read, % this._codes_ini
+			if( InStr(A_LoopReadLine, $cmd_search) )
+			{
+				this._CM := RegExReplace( A_LoopReadLine, "^[^=]+=(\d+).*", "$1" )
+				break			
+			}
+	}
+	/**
+	 */
+	_findUserCommand()
+	{
+		$cmd_search := InStr( this._cmd, "em_" )? this._cmd : "em_" this._cmd
+		
+		IniRead, $command_found, % this._usercmd_ini, %$cmd_search%
+		
+		this._EM := $command_found!="ERROR" ? true : false
+	}
+	/**
+	 */
+	_callDefaultCommand()
+	{			
+		SendMessage  1075, this._CM, 0, , ahk_class TTOTAL_CMD
+	} 
+	/**
+	 */
+	_calllUserCommand()
+	{
+		this._focusCommandLine()
+		this._sendCommand()
+		this._fireCommand()		
+	}
+	/**
+	 */
+	_wait($wait)
+	{
+		if( $wait )
+			sleep, %$wait%
+	}
+	
+	/*---------------------------------------
+		INIT
+	-----------------------------------------
+	*/
+	/**
+	 */
+	_setProcessName()
+	{
+		WinGet, $process_name , ProcessName, ahk_class TTOTAL_CMD
+		this._process_name := $process_name
+	}
+	/**
+	 */
+	_setHwnd()
+	{
+		WinGet, $hwnd , ID, ahk_class TTOTAL_CMD
+		this._hwnd := $hwnd
+	}
+	/*---------------------------------------
+		Total commander command line
+	-----------------------------------------
+	*/
+	/**
+	 */
+	_setCommandLineControl()
+	{
+		this._command_line := this._process_name == "TOTALCMD.EXE" ? "Edit1" : "Edit2"
+	} 
+	/**
+	 */
+	_focusCommandLine()
+	{
+		ControlFocus, % this._command_line, % "ahk_id " this._hwnd
+	} 
+	/**
+	 */
+	_sendCommand()
+	{
+		$user_cmd	:= InStr( this._cmd, "em_" )? this._cmd : "em_" this._cmd
+		$BackUpClip 	:= ClipboardAll ; ClipboardAll must be on its own line
+		Clipboard	:= $user_cmd
+		
+		ClipWait, 10
+		SendInput, ^v
+		Clipboard := $BackUpClip
+	}
+	/**
+	 */
+	_fireCommand()
+	{
+		ControlSend, % this._command_line, {Enter}, % "ahk_id " this._hwnd
+	} 
+
+ 
+}

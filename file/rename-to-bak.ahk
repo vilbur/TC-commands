@@ -67,6 +67,7 @@ class copyBakOrRestore
 		WinGet, $process_name , ProcessName, ahk_class TTOTAL_CMD
 		Run, %COMMANDER_PATH%\%$process_name% /O /S /L=%$dir%
 	}
+	  
 	
 }
 /* CALL CLASS FUNCTION

@@ -1,94 +1,270 @@
-﻿#Include %A_LineFile%\..\..\TotalCommander.ahk
-/*	Pane
-	To get selection call this script in Total commander with parameter %S
-*/
-Class TcPane extends TotalCommander
-{
-	_panes :=	{"TOTALCMD.EXE":	{ "TMyListBox2": "TPathPanel1"	; left pane: path
-			,"TMyListBox1": "TPathPanel2"}	; right pane: path
-		,"TOTALCMD64.EXE":	{"LCLListBox2": "Window9"	; left pane: path
-			,"LCLListBox1": "Window14"}}	; right pane: path
+﻿#Include %A_LineFile%\..\includes.ahk
 
+global $CLSID
+
+$CLSID	:= "{6B39CAA1-A320-4CB0-8DB4-352AA81E460E}"
+
+/*	Pane
+
+*/
+Class TcPane extends TcControlClasses
+{
+	_TcPaneWatcher	:= ""
+	_panes	:= {}	
+
+	/** EXAMPLE OF _panes OBJECT:
+	 *
+	 * _panes := {paneClass:	{"side": "right|left"
+	 *	,"hwnd":	integer
+	 *	,"path":	{"class":	string
+	 *	,"hwnd":	integer}}}
+	 */
 	__New()
 	{
 		this._init()
+		
+		this._setPaneClasses()
+		this._setPathClasses()
+		this._setListBoxAndPathToPair()
+		
+		this._setPanes()
+		
+		this._setTcPaneWatcher()		
 	}
-
-	/** @return string ClassNN of active pane
-	 */
-	getSourcePaneClass()
-	{
-		this._saveActiveWindow()
-
-		WinActivate, % this.hwnd()
-
-		ControlGetFocus, $source_pane, % this.hwnd()
-
-		this._restorePreviousWindow()
-
-		return %$source_pane%
-	}
-	/** @return string ClassNN of active pane
-	 */
-	getTargetPaneClass()
-	{
-		$source_pane	:= this.getSourcePaneClass()
-		$process_name	:= this.proccesName()
-
-		if( $process_name == "TOTALCMD.EXE")
-			return % $source_pane == "TMyListBox2" ? "TMyListBox1" : "TMyListBox2"
-		else
-			return % $source_pane == "LCLListBox2" ? "LCLListBox1" : "LCLListBox2"
-	}
-	/**
-	  * @param string pane 'source|target'
-	 */
-	getPanedHwnd( $pane:="source" )
-	{
-		$class_nn := $pane == "source" ? this.getSourcePaneClass() : this.getTargetPaneClass()
-
-		ControlGet, $hwnd, Hwnd  ,, %$class_nn%, % this.hwnd()
-
-		return $hwnd
-	}
+	
 	/** @return string path of active pane
+	 *	
+	 *	@param string pane 'left|right|source|target'
+	 *	
+	 *	@return string	path of required pane
 	 */
-	getSourcePath()
+	getPath($pane:="source")
 	{
-		$class_nn := this._panes[this.proccesName()][this.getSourcePaneClass()]
-
-		return % this._getPath($class_nn)
+		return % this._getPathFromControl($pane)
 	}
-	/** @return string path of in active pane
+	
+	/** Set\Get active pane
+	 *	
+	 *	@param string	$side "left|right|target" pane
+	 *	
+	 *	@return string "left|right"
 	 */
-	getTargetPath()
+	activePane($side:="")
 	{
-		$class_nn := this._panes[this.proccesName()][this.getTargetPaneClass()]
+		$source_side	:= this._getPaneSide( this._getPaneClass("source") )
+		
+		if( ! $side )
+			return $source_side
+				
+		if( $side!=$source_side )
+		{
+			;$target_class	:= this._getPaneClass("target")
 
-		return % this._getPath($class_nn)
+			this._TcPaneWatcher.setactivePane( this._hwnd, this._getPaneClass("target") )
+
+			ControlFocus, , % this._getAhkId( "target" )
+		}
+		
+		return this
 	}
+
 	/** refresh pane
-	*/
+	 * 
+	 * @param string pane 'left|right|source|target'
+	 */
 	refresh($pane:="source")
 	{
-		$dir	:= $pane == "source" ? this.getSourcePath() : this.getTargetPath()
 		$process_name	:= this._process_name
+		$dir	:= this.getPath($pane)
 		$pane	:= $pane == "source" ? "L" : "R"
-
+		
 		Run, %COMMANDER_PATH%\%$process_name% /O /S /%$pane%=%$dir%
+		
+		return this  
 	}
 	/**
 	 */
-	_getPath($class_nn)
+	getHwnd( $pane:="source", $path_control:="" )
 	{
-		ControlGetText, $path , %$class_nn%, % this.hwnd()
+		;$class := this._getPaneClass($pane)
+		;Dump($class, $pane, 1)
+		
+		$pane_obj := this._panes[this._getPaneClass($pane)]
+			
+		return % $path_control ? $pane_obj.path.hwnd : $pane_obj.hwnd
+	} 
+	/*---------------------------------------
+		GET PPANES DATA
+	-----------------------------------------
+	*/
+	/** @return string ClassNN of active pane
+	 * 
+	 * @param string pane 'left|right|source|target'
+	 *
+	 * @return	string	ClassNN of required pane
+	 */
+	_getPaneClass($pane)
+	{
+		if( RegExMatch( $pane, "i)left|right" ) )
+			return % this._getPaneClassBySide($pane)
+		
+		$source_pane := this._TcPaneWatcher.activePane(this._hwnd)
+		
+		return % $pane=="source" ? $source_pane : this._getTargetPaneClass($source_pane)
+	}
+	/** @return string ClassNN of active pane
+	 */
+	_getTargetPaneClass($source_pane)
+	{
+		For $pane_class, $o in this._class_nn
+			if( $pane_class != $source_pane )
+				return $pane_class
+	}
+	
+	/** Get pane class by side
+	 * 
+	 * @param string $side 'left|right'
+	 * 
+	 * @return	string	ClassNN of required pane
+	 */
+	_getPaneClassBySide($side)
+	{		
+		For $pane_class, $o in this._class_nn
+			if( $side=="right" && A_Index == 1 || $side=="left" && A_Index == 2 )
+				return $pane_class
+	}
+	/**
+	 */
+	_getPathFromControl($pane)
+	{
+		ControlGetText, $path,, % this._getAhkId($pane, "path")
+		
+		/* remove mask like "*.*" from end of path
+		 */
+		$path := RegExReplace( $path, "[\\\/]\*\.\*", "" ) 
+		
+		return $path
+	}
+	
+	/*---------------------------------------
+		SET _panes OBJECT
+	-----------------------------------------
+	*/
+	/**
+	 */
+	_setPanes()
+	{
+		For $pane_class, $path_class in this._class_nn
+			this._panes[$pane_class] := this._getPaneObject($pane_class, $path_class, A_Index)
+	}
+	/**
+	 */
+	_getPaneObject($pane_class, $path_class, $index)
+	{
+		return %	{"side":	$index == 1 ? "right" : "left"
+			,"hwnd":	this._getControlHwnd($pane_class)
+			,"path":	{"class":	$path_class
+				,"hwnd":	this._getControlHwnd($path_class)}}
+	}
+	/**
+	 */
+	_getControlHwnd( $class_nn )
+	{
+		ControlGet, $hwnd, Hwnd,, %$class_nn%,  % this.ahkId()
 
-		SplitPath, $path,, $path_dir ; remove mask liek "*.*" from end of path
-
-		return $path_dir
+		return $hwnd 
 	}
 
+	/*---------------------------------------
+		TcPaneWatcher
+	-----------------------------------------
+	*/
+	/** Get focused control (file list) when Total commander window lost focus
+	 *		
+	 */  
+	_setTcPaneWatcher()
+	{
+		if( ! this._TcPaneWatcher )
+			try
+			{
+				this._TcPaneWatcher := ComObjActive($CLSID).hwnd(this._hwnd)
+			}
+			
+		if( ! this._TcPaneWatcher )
+			this._runTcPaneWatcher()
+	}
+	/** Get focused control (file list) when Total commander window lost focus
+	  * 
+	 */  
+	_runTcPaneWatcher()
+	{
+		$hwnd := this._hwnd
+		
+		Run, %A_LineFile%\..\TcPaneWatcher\TcPaneWatcher.ahk %$hwnd% %$CLSID%
+		sleep, 50
+		this._setTcPaneWatcher()
+	}
+	/**
+	 */
+	_getAhkId( $pane, $path_control:="" )
+	{
+		;$hwnd := this.getHwnd( $pane, $path_control )
+		;Dump($hwnd, "hwnd", 1)
+		
+		;return % "ahk_id " $hwnd
+		return % "ahk_id " this.getHwnd( $pane, $path_control )		
+	}
+	/** Get side of pane
+	 * 
+	 * @return string "left|right"
+	 */
+	_getPaneSide($pane_class_get)
+	{
+		For $pane_class, $o in this._class_nn
+			if( $pane_class==$pane_class_get )
+				return A_Index == 1 ? "right" : "left"
+	}
 
-
-
+	
+	/*---------------------------------------
+		FALLBACKS FOR OBSOLETE METHODS
+	-----------------------------------------
+	*/
+	getSourcePaneClass(){
+		MsgBox,262144,, % "OBSOLETE METHOD:`n	TcPane.getSourcePaneClass()`n`nCHANGE IT TO:`n	TcPane._getSourcePaneClass()"
+	}
+	getTargetPaneClass(){
+		MsgBox,262144,, % "OBSOLETE METHOD:`n	TcPane.getTargetPaneClass()`n`nCHANGE IT TO:`n	TcPane._getTargetPaneClass()"
+	}
+	getPanedHwnd( $pane:="source" ){
+		MsgBox,262144,, % "OBSOLETE METHOD:`n	TcPane.getPanedHwnd()`n`nCHANGE IT TO:`n	TcPane._getPanedHwnd()"
+	}
+	setActivePane(){
+		MsgBox,262144,, % "OBSOLETE METHOD:`n	TcPane.setActivePane()`n`nCHANGE IT TO:`n	TcPane.activePane('left|right')"
+	}
+	getActivePane(){
+		MsgBox,262144,, % "OBSOLETE METHOD:`n	TcPane.getActivePane()`n`nCHANGE IT TO:`n	TcPane.activePane()"
+	}
+	getSourcePath()
+	{
+		MsgBox,262144,, % "OBSOLETE METHOD:`n	TcPane.getTargetPaneClass()`n`nCHANGE IT TO:`n	TcPane.getPath('source')"
+	}
+	getTargetPath()
+	{
+		MsgBox,262144,, % "OBSOLETE METHOD:`n	TcPane.getTargetPaneClass()`n`nCHANGE IT TO:`n	TcPane.getPath('target')"
+	}
+	
+	
 }
+
+OnExit("KillTcPaneWatcher")
+
+KillTcPaneWatcher(ExitReason, ExitCode)
+{
+	try
+	{
+		ComObjActive($CLSID).exit()
+	}	
+	
+}
+

@@ -7,13 +7,13 @@
 
 $TcPane	:= new TcPane()
 $selection	:= new TcSelection().getSelectionOrFocused()
-$target_path	:= $TcPane.getTargetPath()
+$target_path	:= $TcPane.getPath("target")
 $target_path	= %$target_path%\
 
 if( ! isObject($selection) )
 	$selection := [$selection]
 
-
+;Dump($selection, "selection", 1)
 For $i, $path_source in $selection
 {
 	;MsgBox,262144,path_source, %$path_source%

@@ -40,11 +40,19 @@ Class Compiler
 		this._setCompiledFilePath()
 		this._deleteCompiledFile()				
 		this._setIconPath()
+		this._runCompiler()
+		this._refresh()
 		
+		MsgBox,262144,, % this._file_name " Compiled",1
+	}
+	/**
+	 */
+	_runCompiler()
+	{
 		$icon := this._icon_path ? " /icon " this._icon_path : ""
 	
-		Run, % this._compiler_path " /in " this._source_file " /out  " this._compiled_file $icon 
-	}
+		Run, % this._compiler_path " /in " this._source_file " /out  " this._compiled_file $icon
+	} 
 	
 	/**
 	 */
@@ -97,7 +105,16 @@ Class Compiler
 		
 		ExitApp
 	}  
-	
+	/** Command: RereadSource
+	 */
+	_refresh()
+	{
+		While( ! FileExist(this._compiled_file) )
+			sleep, 100
+		
+		SendMessage  1075, 540, 0, , ahk_class TTOTAL_CMD
+
+	}
 }
 
 $source_file	= %1%
