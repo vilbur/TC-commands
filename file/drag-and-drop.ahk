@@ -18,3 +18,14 @@ DropFiles(window, files*)
   if ErrorLevel
     DllCall("GlobalFree", "ptr", hGlobal)
 }
+
+
+
+
+/*---------------------------------------
+	RUN DropFiles() BY CALL OF THIS FILE
+-----------------------------------------
+*/
+$wint_title	= %1%
+$file	= %2%
+DropFiles( $wint_title, $file ) 
