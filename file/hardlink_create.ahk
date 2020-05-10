@@ -13,18 +13,14 @@ $target_path	= %$target_path%\
 if( ! isObject($selection) )
 	$selection := [$selection]
 
-;Dump($selection, "selection", 1)
 For $i, $path_source in $selection
 {
-	;MsgBox,262144,path_source, %$path_source%
-	;MsgBox,262144,target_path, %$target_path%
-
-	;Dump($path_source, $target_path, 1)
+	;Dump($path_source, "path_source", 1)
+	;Dump($target_path, "target_path", 1)
 	;;; /* Create hardlink, backuped and quiet */
-	File($path_source).hardlink($target_path)
+	MsgBox, 4, WOULD YOU LIKE TO CREATE HARDLINK ?, Source:`n%$path_source% `n`nTarget:`n%$target_path% 
+	IfMsgBox, Yes
+		File($path_source).hardlink($target_path)
 }
 
 $TcPane.refresh("target")
-
-
-
